@@ -4,12 +4,15 @@
 typedef struct {
   float fps;
   int UseCustomScreenDimensions;
+  int UseBorderlessWindow;
   int ScreenWidth;
   int ScreenHeight;
   int EnableCursorClip;
   int CursorClipHotkey;
 } config;
-config configFile;
+config configFile = {
+  .UseBorderlessWindow = 1,
+};
 
 void containCursor(void *args) {
   while (TRUE) {
@@ -28,6 +31,8 @@ static int handler(void *Settings, const char *section, const char *name, const 
   }
   if (MATCH("Settings", "UseCustomScreenDimensions")) {
     modconfig->UseCustomScreenDimensions = atoi(value);
+  } else if (MATCH("Settings", "UseBorderlessWindow")) {
+    modconfig->UseBorderlessWindow = atoi(value);
   } else if (MATCH("Settings", "ScreenWidth")) {
     modconfig->ScreenWidth = atoi(value);
   } else if (MATCH("Settings", "ScreenHeight")) {
@@ -58,19 +63,21 @@ void setFps(float rFPS) {
   NtWriteVirtualMemory(pHandle, (LPVOID)0x140BF66AE, SkipIntro, 20, 0);
 
   // Borderless
-  if (configFile.UseCustomScreenDimensions != 1) {
-    final.right = GetSystemMetrics(SM_CXSCREEN);
-    final.bottom = GetSystemMetrics(SM_CYSCREEN);
-  } else {
-    final.right = configFile.ScreenWidth;
-    final.bottom = configFile.ScreenHeight;
+  if (configFile.UseBorderlessWindow != 0) {
+    if (configFile.UseCustomScreenDimensions != 1) {
+      final.right = GetSystemMetrics(SM_CXSCREEN);
+      final.bottom = GetSystemMetrics(SM_CYSCREEN);
+    } else {
+      final.right = configFile.ScreenWidth;
+      final.bottom = configFile.ScreenHeight;
+    }
+    final.left = 0;
+    final.top = 0;
+    SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+    AdjustWindowRect(&final, GetWindowLong(hWnd, GWL_STYLE), FALSE);
+    SetWindowLong(hWnd, GWL_EXSTYLE, (GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOPMOST));
+    MoveWindow(hWnd, final.left, final.top, final.right - final.left, final.bottom - final.top, TRUE);
   }
-  final.left = 0;
-  final.top = 0;
-  SetWindowLong(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-  AdjustWindowRect(&final, GetWindowLong(hWnd, GWL_STYLE), FALSE);
-  SetWindowLong(hWnd, GWL_EXSTYLE, (GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOPMOST));
-  MoveWindow(hWnd, final.left, final.top, final.right - final.left, final.bottom - final.top, TRUE);
 
   SprjFlipper = (DWORD64)GetModuleHandle("darksoulsiii.exe") + 0x489DD10;
   
